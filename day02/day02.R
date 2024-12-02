@@ -41,5 +41,4 @@ count_safes <- function(df,dampener=FALSE){
 count_safes(input, FALSE)
 
 # Part 2
-
 count_safes(input, TRUE)
