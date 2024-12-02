@@ -2,21 +2,47 @@
 
 library(zoo) # needed for na.trim
 
-# Part 1
 input <- read.csv("input.aoc", header=FALSE, sep='')
 
-is_safe<-vector()
-for (i in 1:nrow(input)){
-  distances <- vector()
-  for (k in 1:(length(input[i,])-1)){
-    distances <- c(distances, input[i,][[k+1]]-input[i,][[k]])
-  }
-  distances <- na.trim(distances)
-  is_safe <- c(is_safe, abs(sum(sign(distances))) == 
-                 length(na.trim(as.numeric(input[i,])))-1 &
-          all(abs(distances) >=1 & abs(distances) <= 3))
+# Part 1
+is_safe <- function(report){
+  distances <- report[1:(length(report)-1)]-report[2:(length(report))]
+  safe <- abs(sum(sign(distances))) == 
+          length(na.trim(as.numeric(report)))-1 &
+            all(abs(distances) >=1 & abs(distances) <= 3)
+  return(safe)
 }
 
-sum(is_safe)
+count_safes <- function(df){
+  counter <- vector()
+  for(i in 1:nrow(df)){
+    counter <- c(counter, is_safe(na.trim(as.numeric(df[i,]))))
+  }
+  return(sum(counter))
+}
+
+count_safes(input)
 
 # Part 2
+is_safe_dampener <- function(report){
+  if(is_safe(report)){
+    return(TRUE)
+  }
+  for (i in 1:length(report)){
+    modified_report <- report[-i]  # Remove the i-th level
+    if (is_safe(modified_report)){
+      return(TRUE)
+    }
+  }
+  return(FALSE)
+}
+
+count_safes_dampener <- function(df){
+  counter <- vector()
+  for(i in 1:nrow(df)){
+    counter <- c(counter, is_safe_dampener(na.trim(as.numeric(df[i,]))))
+  }
+  return(sum(counter))
+}
+
+count_safes_dampener(input)
