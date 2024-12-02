@@ -13,17 +13,6 @@ is_safe <- function(report){
   return(safe)
 }
 
-count_safes <- function(df){
-  counter <- vector()
-  for(i in 1:nrow(df)){
-    counter <- c(counter, is_safe(na.trim(as.numeric(df[i,]))))
-  }
-  return(sum(counter))
-}
-
-count_safes(input)
-
-# Part 2
 is_safe_dampener <- function(report){
   if(is_safe(report)){
     return(TRUE)
@@ -37,12 +26,20 @@ is_safe_dampener <- function(report){
   return(FALSE)
 }
 
-count_safes_dampener <- function(df){
+count_safes <- function(df,dampener=FALSE){
   counter <- vector()
   for(i in 1:nrow(df)){
-    counter <- c(counter, is_safe_dampener(na.trim(as.numeric(df[i,]))))
-  }
+    if(dampener==TRUE){
+      counter <- c(counter, is_safe_dampener(na.trim(as.numeric(df[i,]))))
+    }else{
+      counter <- c(counter, is_safe(na.trim(as.numeric(df[i,]))))
+      }
+    }
   return(sum(counter))
 }
 
-count_safes_dampener(input)
+count_safes(input, FALSE)
+
+# Part 2
+
+count_safes(input, TRUE)
