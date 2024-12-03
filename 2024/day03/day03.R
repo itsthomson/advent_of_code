@@ -1,5 +1,4 @@
 # https://adventofcode.com/2024/day/3
-library(readr)
 library(stringr)
 
 parse_mul_instructions <- function(memory, part_two = FALSE) {
