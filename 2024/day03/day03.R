@@ -1,5 +1,5 @@
 # https://adventofcode.com/2024/day/3
-library(stringr)
+library(readr)
 
 parse_mul_instructions <- function(memory, part_two = FALSE) {
   mul_instructions <- str_extract_all(memory, "mul\\((\\d+),(\\d+)\\)")[[1]]
