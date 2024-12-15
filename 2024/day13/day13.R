@@ -1,129 +1,115 @@
-# Function to check if a solution exists and find minimum tokens
-solve_claw_machine <- function(button_a_x, button_a_y, button_b_x, button_b_y, prize_x, prize_y, max_presses = 100) {
-  # Check for NA or non-numeric inputs
-  if (any(is.na(c(button_a_x, button_a_y, button_b_x, button_b_y, prize_x, prize_y)))) {
-    stop("Invalid input: NA values detected")
+gcd <- function(a, b) {
+  a <- abs(as.numeric(a))
+  b <- abs(as.numeric(b))
+  while (b != 0) {
+    t <- b
+    b <- a %% b
+    a <- t
   }
-  
-  # Try all combinations of button presses up to max_presses
-  for (a in 0:max_presses) {
-    for (b in 0:max_presses) {
-      # Calculate position after pressing buttons
-      x_pos <- a * button_a_x + b * button_b_x
-      y_pos <- a * button_a_y + b * button_b_y
-      
-      # Use all.equal for floating point comparison with some tolerance
-      x_match <- isTRUE(all.equal(x_pos, prize_x, tolerance = 1e-10))
-      y_match <- isTRUE(all.equal(y_pos, prize_y, tolerance = 1e-10))
-      
-      # Check if we've reached the prize
-      if (x_match && y_match) {
-        # Calculate token cost (A costs 3, B costs 1)
-        tokens <- 3 * a + 1 * b
-        return(list(possible = TRUE, tokens = tokens, a_presses = a, b_presses = b))
-      }
-    }
-  }
-  return(list(possible = FALSE, tokens = NA, a_presses = NA, b_presses = NA))
+  return(a)
 }
 
-# Function to parse input file
+solve_machine <- function(machine, offset = 0) {
+  a_x <- as.numeric(machine$button_a_x)
+  a_y <- as.numeric(machine$button_a_y)
+  b_x <- as.numeric(machine$button_b_x)
+  b_y <- as.numeric(machine$button_b_y)
+  target_x <- as.numeric(machine$prize_x) + as.numeric(offset)
+  target_y <- as.numeric(machine$prize_y) + as.numeric(offset)
+  det <- a_x * b_y - b_x * a_y
+  if (det == 0) return(list(possible = FALSE))
+  gx <- gcd(a_x, b_x)
+  gy <- gcd(a_y, b_y)
+  if (target_x %% gx != 0 || target_y %% gy != 0) {
+    return(list(possible = FALSE))
+  }
+  n_num <- target_x * b_y - b_x * target_y
+  m_num <- a_x * target_y - target_x * a_y
+  if (n_num %% det != 0 || m_num %% det != 0) {
+    return(list(possible = FALSE))
+  }
+  n <- n_num %/% det
+  m <- m_num %/% det
+  if (n < 0 || m < 0) {
+    k_step_n <- b_x %/% gx
+    k_step_m <- -a_x %/% gx
+    k <- 0
+    while (n < 0 || m < 0) {
+      k <- k + 1
+      if (k > 10000) return(list(possible = FALSE))
+      n <- n + k_step_n
+      m <- m + k_step_m
+    }
+  }
+  x_pos <- n * a_x + m * b_x
+  y_pos <- n * a_y + m * b_y
+  if (x_pos != target_x || y_pos != target_y) {
+    return(list(possible = FALSE))
+  }
+  tokens <- 3 * n + m
+  return(list(possible = TRUE, tokens = tokens, a_presses = n, b_presses = m))
+}
+
 parse_input <- function(filepath) {
-  # Read all lines from file
   lines <- readLines(filepath)
-  
-  # Initialize lists to store machines
   machines <- list()
   current_machine <- list()
-  
   for (line in lines) {
-    # Skip empty lines
     if (nchar(trimws(line)) == 0) {
-      if (length(current_machine) > 0) {
+      if (length(current_machine) == 6) {
         machines[[length(machines) + 1]] <- current_machine
-        current_machine <- list()
       }
+      current_machine <- list()
       next
     }
-    
-    # Parse button A
     if (grepl("^Button A:", line)) {
-      values <- as.numeric(strsplit(gsub("Button A: X\\+|, Y\\+", " ", line), " ")[[1]])
-      if (length(values) == 2 && !any(is.na(values))) {
-        current_machine$button_a_x <- values[1]
-        current_machine$button_a_y <- values[2]
+      matches <- regexec("X\\+(\\d+), Y\\+(\\d+)", line)
+      values <- regmatches(line, matches)[[1]]
+      if (length(values) == 3) {
+        current_machine$button_a_x <- as.numeric(values[2])
+        current_machine$button_a_y <- as.numeric(values[3])
       }
     }
-    # Parse button B
     else if (grepl("^Button B:", line)) {
-      values <- as.numeric(strsplit(gsub("Button B: X\\+|, Y\\+", " ", line), " ")[[1]])
-      if (length(values) == 2 && !any(is.na(values))) {
-        current_machine$button_b_x <- values[1]
-        current_machine$button_b_y <- values[2]
+      matches <- regexec("X\\+(\\d+), Y\\+(\\d+)", line)
+      values <- regmatches(line, matches)[[1]]
+      if (length(values) == 3) {
+        current_machine$button_b_x <- as.numeric(values[2])
+        current_machine$button_b_y <- as.numeric(values[3])
       }
     }
-    # Parse prize location
     else if (grepl("^Prize:", line)) {
-      values <- as.numeric(strsplit(gsub("Prize: X=|, Y=", " ", line), " ")[[1]])
-      if (length(values) == 2 && !any(is.na(values))) {
-        current_machine$prize_x <- values[1]
-        current_machine$prize_y <- values[2]
+      matches <- regexec("X=(\\d+), Y=(\\d+)", line)
+      values <- regmatches(line, matches)[[1]]
+      if (length(values) == 3) {
+        current_machine$prize_x <- as.numeric(values[2])
+        current_machine$prize_y <- as.numeric(values[3])
       }
     }
   }
-  
-  # Add last machine if exists
-  if (length(current_machine) > 0 && length(current_machine) == 6) {
+  if (length(current_machine) == 6) {
     machines[[length(machines) + 1]] <- current_machine
   }
-  
-  if (length(machines) == 0) {
-    stop("No valid machines found in input file")
-  }
-  
   return(machines)
 }
 
-# Main function to solve the puzzle
-solve_puzzle <- function(filepath) {
-  # Check if file exists
-  if (!file.exists(filepath)) {
-    stop("Input file not found")
-  }
-  
-  # Parse input
+claw_solver <- function(filepath, part2 = FALSE) {
   machines <- parse_input(filepath)
-  
-  # Track total tokens needed and which machines are possible
+  offset <- if(part2) 10000000000000 else 0
   total_tokens <- 0
   possible_wins <- 0
-  
-  # Process each machine
   for (i in seq_along(machines)) {
-    machine <- machines[[i]]
-    tryCatch({
-      result <- solve_claw_machine(
-        machine$button_a_x, machine$button_a_y,
-        machine$button_b_x, machine$button_b_y,
-        machine$prize_x, machine$prize_y
-      )
-      
-      if (result$possible) {
-        possible_wins <- possible_wins + 1
-        total_tokens <- total_tokens + result$tokens
-        cat(sprintf("Machine %d: Possible to win with %d A presses and %d B presses, costing %d tokens\n",
-                    i, result$a_presses, result$b_presses, result$tokens))
-      } else {
-        cat(sprintf("Machine %d: Impossible to win\n", i))
-      }
-    }, error = function(e) {
-      cat(sprintf("Error processing machine %d: %s\n", i, e$message))
-    })
+    result <- solve_machine(machines[[i]], offset)
+    if (result$possible) {
+      possible_wins <- possible_wins + 1
+      total_tokens <- total_tokens + result$tokens
+    }
   }
-  
-  cat(sprintf("\nTotal possible prizes: %d\n", possible_wins))
-  cat(sprintf("Total tokens needed: %d\n", total_tokens))
+  total_tokens
 }
 
+# For part 1
+claw_solver("input.aoc", part2 = FALSE)
 
-solve_puzzle("input.aoc")
+# For part 2 (with large offset)
+claw_solver("input.aoc", part2 = TRUE)
